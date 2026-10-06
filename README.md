@@ -1,19 +1,19 @@
 # Remember Window Positions
 
 > [!NOTE]
-> ## Fork: correção do Brave ao desligar o PC
+> ## Fork: Brave window restore fix on shutdown
 >
-> Este é um fork de [rxappdev/RememberWindowPositions](https://github.com/rxappdev/RememberWindowPositions) com um ajuste extra: o **brave-logout-guard** ([`extras/brave-logout-guard`](extras/brave-logout-guard)). O script do KWin continua igual ao original.
+> This is a fork of [rxappdev/RememberWindowPositions](https://github.com/rxappdev/RememberWindowPositions) with one extra addition: **brave-logout-guard** ([`extras/brave-logout-guard`](extras/brave-logout-guard)). The KWin script itself is unchanged from upstream.
 >
-> **O problema:** no Plasma 6 com Wayland, ao desligar, reiniciar ou sair da sessão, o KWin fecha as janelas **uma por uma** (`closeWaylandWindows`). O Brave (e outros navegadores baseados no Chromium) entende cada fechamento como "o usuário fechou esta janela" e a tira da sessão. No fim, só a última janela fica salva. Com várias janelas abertas (por exemplo, uma em cada monitor), o Brave volta com **só uma**. Se você fecha pelo menu **☰ → Sair**, todas voltam normalmente, porque o app inteiro é encerrado de uma vez.
+> **The problem:** on Plasma 6 Wayland, when you shut down, reboot or log out, KWin closes windows **one by one** (`closeWaylandWindows`). Brave (and other Chromium-based browsers) treats each close as "the user closed this window" and drops it from the session, so only the last window is saved. With several windows open (e.g. one per monitor), Brave comes back with **just one**. Quitting through **☰ → Exit** works fine, because the whole app is closed at once.
 >
-> **A correção:** um serviço systemd de usuário escuta o D-Bus e, quando o Plasma chama `logout`, `logoutAndShutdown`, `logoutAndReboot` ou `closeWaylandWindows`, manda um `SIGTERM` para o processo principal do Brave. O `SIGTERM` equivale ao "Sair" do menu, então o Brave salva **todas** as janelas antes de o KWin começar a fechá-las.
+> **The fix:** a systemd user service listens on D-Bus. When Plasma calls `logout`, `logoutAndShutdown`, `logoutAndReboot` or `closeWaylandWindows`, it sends `SIGTERM` to Brave's main process. `SIGTERM` is the same as **Exit** from the menu, so Brave saves **all** of its windows before KWin starts closing them.
 >
-> Como o Brave já está fechado quando o Plasma salva a lista de apps abertos, o Plasma não o reabriria no próximo login. Para resolver isso, o guard cria um marcador e reabre o Brave no login seguinte com `kstart --application brave-browser`. Isso só acontece **se o Brave estava aberto** ao desligar. Depois o RememberWindowPositions coloca cada janela no lugar.
+> Brave is already closed by the time Plasma saves the list of open apps, so Plasma would not reopen it on the next login. To handle this, the guard leaves a marker file and reopens Brave on the next login with `kstart --application brave-browser`. This only happens **if Brave was open** at shutdown. RememberWindowPositions then puts each window back in place.
 >
-> **Instalar:** `make install-brave-guard` · **Remover:** `make uninstall-brave-guard` · **Log:** `~/.local/state/brave-logout-guard.log`
+> **Install:** `make install-brave-guard` · **Uninstall:** `make uninstall-brave-guard` · **Log:** `~/.local/state/brave-logout-guard.log`
 >
-> Testado no CachyOS com Plasma 6.7.5 (Wayland) e Brave (`brave-bin`).
+> Tested on CachyOS with Plasma 6.7.5 (Wayland) and Brave (`brave-bin`).
 
 <img align="left" style="margin-right: 20px" width="90" height="90" src="./assets/icon.png">
 
