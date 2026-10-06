@@ -1,5 +1,20 @@
 # Remember Window Positions
 
+> [!NOTE]
+> ## Fork: correção do Brave ao desligar o PC
+>
+> Este é um fork de [rxappdev/RememberWindowPositions](https://github.com/rxappdev/RememberWindowPositions) com um ajuste extra: o **brave-logout-guard** ([`extras/brave-logout-guard`](extras/brave-logout-guard)). O script do KWin continua igual ao original.
+>
+> **O problema:** no Plasma 6 com Wayland, ao desligar, reiniciar ou sair da sessão, o KWin fecha as janelas **uma por uma** (`closeWaylandWindows`). O Brave (e outros navegadores baseados no Chromium) entende cada fechamento como "o usuário fechou esta janela" e a tira da sessão. No fim, só a última janela fica salva. Com várias janelas abertas (por exemplo, uma em cada monitor), o Brave volta com **só uma**. Se você fecha pelo menu **☰ → Sair**, todas voltam normalmente, porque o app inteiro é encerrado de uma vez.
+>
+> **A correção:** um serviço systemd de usuário escuta o D-Bus e, quando o Plasma chama `logout`, `logoutAndShutdown`, `logoutAndReboot` ou `closeWaylandWindows`, manda um `SIGTERM` para o processo principal do Brave. O `SIGTERM` equivale ao "Sair" do menu, então o Brave salva **todas** as janelas antes de o KWin começar a fechá-las.
+>
+> Como o Brave já está fechado quando o Plasma salva a lista de apps abertos, o Plasma não o reabriria no próximo login. Para resolver isso, o guard cria um marcador e reabre o Brave no login seguinte com `kstart --application brave-browser`. Isso só acontece **se o Brave estava aberto** ao desligar. Depois o RememberWindowPositions coloca cada janela no lugar.
+>
+> **Instalar:** `make install-brave-guard` · **Remover:** `make uninstall-brave-guard` · **Log:** `~/.local/state/brave-logout-guard.log`
+>
+> Testado no CachyOS com Plasma 6.7.5 (Wayland) e Brave (`brave-bin`).
+
 <img align="left" style="margin-right: 20px" width="90" height="90" src="./assets/icon.png">
 
 <pre>KDE Plamsa KWin Script for remembering application window properties.

@@ -9,7 +9,7 @@ SESSION_APPLICATIONS := # dolphin konsole kate
 
 .NOTPARALLEL: all
 
-.PHONY: all build install uninstall clean enable disable restart-kwin logs load unload reload remove-keybindings
+.PHONY: all build install uninstall clean enable disable restart-kwin logs load unload reload remove-keybindings install-brave-guard uninstall-brave-guard
 
 all: install clean
 
@@ -69,3 +69,9 @@ reload: unload load
 remove-keybindings:
 	@echo "Removing all unused custom keybindings..."
 	qdbus org.kde.kglobalaccel /component/kwin org.kde.kglobalaccel.Component.cleanUp
+
+install-brave-guard:
+	@extras/brave-logout-guard/install.sh
+
+uninstall-brave-guard:
+	@extras/brave-logout-guard/uninstall.sh

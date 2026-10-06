@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Fecha o Brave "de verdade" (SIGTERM = equivalente ao menu > Sair) assim que o
+# Plasma inicia logout/desligar/reiniciar, antes do KWin fechar as janelas uma a uma
+# (o que faria o Brave salvar só a última janela na sessão).
+
+LOG="${XDG_STATE_HOME:-$HOME/.local/state}/brave-logout-guard.log"
+REOPEN_FLAG="${XDG_STATE_HOME:-$HOME/.local/state}/brave-logout-guard.reopen"
+mkdir -p "$(dirname "$LOG")"
+log() { echo "$(date '+%F %T') $*" >> "$LOG"; }
+
+brave_main_pids() {
+    # Processo principal do Brave = sem argumento --type=
+    for pid in $(pgrep -x brave); do
+        tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q -- '--type=' || echo "$pid"
+    done
+}
+
+quit_brave() {
+    local pids
+    pids=$(brave_main_pids)
+    [ -z "$pids" ] && { log "gatilho ($1), Brave não está aberto"; return; }
+    log "gatilho ($1), enviando SIGTERM para Brave: $pids"
+    touch "$REOPEN_FLAG"
+    kill -TERM $pids
+    # espera até 10s o Brave terminar de salvar a sessão
+    for _ in $(seq 100); do
+        kill -0 $pids 2>/dev/null || { log "Brave encerrou limpo"; return; }
+        sleep 0.1
+    done
+    log "Brave ainda rodando após 10s"
+}
+
+log "iniciado"
+
+# Como o Brave é fechado antes do Plasma salvar a sessão, o Plasma não o reabre.
+# Se fomos nós que o fechamos no último logout, reabrimos aqui (ele restaura as abas/janelas).
+if [ -e "$REOPEN_FLAG" ]; then
+    rm -f "$REOPEN_FLAG"
+    sleep 3  # dá tempo do KWin/RememberWindowPositions carregarem
+    if [ -z "$(brave_main_pids)" ]; then
+        log "reabrindo Brave fechado no último logout"
+        kstart --application brave-browser >>"$LOG" 2>&1 &
+    fi
+fi
+dbus-monitor --session \
+    "type='method_call',interface='org.kde.Shutdown'" \
+    "type='method_call',interface='org.kde.KWin.Session',member='closeWaylandWindows'" \
+    "type='method_call',interface='org.kde.KSMServerInterface',member='logout'" 2>>"$LOG" |
+while read -r line; do
+    case "$line" in
+        *member=logoutAndShutdown*|*member=logoutAndReboot*|*member=logout*|*member=closeWaylandWindows*)
+            m=$(sed -n 's/.*member=\([^ ;]*\).*/\1/p' <<< "$line")
+            quit_brave "$m"
+            ;;
+    esac
+done
